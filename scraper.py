@@ -8,7 +8,7 @@ from selenium.webdriver.firefox.webdriver import WebDriver
 from firefox import *
 
 TAKE_IT_EASY = True
-
+TAKE_IT_EASY_TIMEOUT = 30
 
 def check_for_linkedin_home_page(driver):
     xpaths = [
@@ -34,7 +34,7 @@ def wait_for_linkedin_home_page(driver):
     return False
 
 
-def login_to_linkedin(driver,username,password):
+def login_to_linkedin(driver, username, password):
     start_time = time.time()
 
     try:
@@ -255,9 +255,8 @@ class Scraper:
             while 1:
                 pass
 
-        #login before doing any other operations
+        # login before doing any other operations
         self.do_login()
-
 
     def do_login(self):
         while 1:
@@ -381,7 +380,7 @@ class Scraper:
         these_results = []
         while 1:
             if TAKE_IT_EASY:
-                time.sleep(30)
+                time.sleep(TAKE_IT_EASY_TIMEOUT)
             url = self.make_next_url(len(these_results) > 0)
             if self.get_to_job_search_page(url) is False:
                 these_results = []
