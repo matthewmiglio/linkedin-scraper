@@ -1,6 +1,7 @@
+import time
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-import time
 from selenium.webdriver.firefox.options import Options
 
 
@@ -12,7 +13,7 @@ def make_firefox_driver():
         # Set Firefox options
         firefox_options = Options()
 
-        firefox_options.add_argument('-headless')
+        # firefox_options.add_argument('-headless')
         firefox_options.add_argument("--bwsi")
         firefox_options.add_argument("--mute-audio")
         firefox_options.add_argument("--disable-gpu")
@@ -68,9 +69,7 @@ def make_firefox_driver():
         driver = webdriver.Firefox(options=firefox_options)
 
         time_taken = str(time.time() - start_time).split(".")[0]
-        print(
-            f"Successfully created and configured firefox driver in {time_taken}s"
-        )
+        print(f"Successfully created and configured firefox driver in {time_taken}s")
         return driver
     except:
         print("Failed to create  or configure firefox driver")
@@ -148,7 +147,9 @@ def get_text_from_xpaths(driver, xpaths):
     return texts
 
 
-def scroll_down_inside_element(driver, element, scroll_pause_time=2, num_scrolls=5) -> bool:
+def scroll_down_inside_element(
+    driver, element, scroll_pause_time=2, num_scrolls=5
+) -> bool:
     try:
         # Get current scroll height of the element
         last_height = driver.execute_script(
