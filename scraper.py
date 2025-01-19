@@ -1,6 +1,7 @@
 import os
 import random
 import time
+from hmac import new
 from re import L
 
 from selenium.webdriver.firefox.webdriver import WebDriver
@@ -8,7 +9,8 @@ from selenium.webdriver.firefox.webdriver import WebDriver
 from firefox import *
 
 TAKE_IT_EASY = True
-TAKE_IT_EASY_TIMEOUT = 30
+TAKE_IT_EASY_TIMEOUT = 15
+
 
 def check_for_linkedin_home_page(driver):
     xpaths = [
@@ -69,7 +71,6 @@ def login_to_linkedin(driver, username, password):
 
     if wait_for_linkedin_home_page(driver) is False:
         print("Failed to login to linkedin! Homepage never appeared!")
-        input("input here")
         return False
 
     time_taken = round((time.time() - start_time), 2)
@@ -242,7 +243,10 @@ class Scraper:
         self.current_experience_index = 0
 
         # holding results
-        self.scraped_urls = []
+        self.start_time = time.time()
+        self.total_scrape_count = 0
+        self.valid_scrape_count = 0
+        self.invalid_scrape_count = 0
 
         # saving results
         self.saver = Saver()
@@ -375,32 +379,81 @@ class Scraper:
 
         return True
 
+    def progress_printout(self):
+        # scrape success stats
+        valid_scrape_count = self.valid_scrape_count
+        invalid_scrape_count = self.invalid_scrape_count
+        total_scrape_attempts = valid_scrape_count + invalid_scrape_count
+        valid_scrape_percent = round(
+            (valid_scrape_count / total_scrape_attempts) * 100, 2
+        )
+        invalid_scrape_percent = round(
+            (invalid_scrape_count / total_scrape_attempts) * 100, 2
+        )
+
+        # time stats
+        time_taken = round((time.time() - self.start_time), 2)
+        scrapes_per_second = round((total_scrape_attempts / time_taken), 2)
+
+        #scrape data stats
+        scrapes_this_session = self.total_scrape_count
+        total_scrapes_ever = len(self.saver.get_saved_urls())
+
+        stat2val = {
+            "Valid scrapes": valid_scrape_count,
+            "Invalid Scrapes": invalid_scrape_count,
+            "Total Scrapes": total_scrape_attempts,
+            "Valid Scrape %": valid_scrape_percent,
+            "Invalid Scrape %": invalid_scrape_percent,
+            "Time taken": time_taken,
+            "Scrapes per s": scrapes_per_second,
+            "Scrapes this session": scrapes_this_session,
+            "Total scrapes ever": total_scrapes_ever,
+        }
+
+        print_string  = '\n\n'
+
+        for stat,val in stat2val.items():
+            print_string += f"{stat}: {val}\n"
+        print_string = print_string[:-1]
+        print(print_string, end="\r")
+
     def run(self):
         start_time = time.time()
         these_results = []
         while 1:
+            # make a progress printout
+            self.progress_printout()
+
+            # pause if we're going too fast
             if TAKE_IT_EASY:
                 time.sleep(TAKE_IT_EASY_TIMEOUT)
+
+            # craft new url, get to that job search page
             url = self.make_next_url(len(these_results) > 0)
             if self.get_to_job_search_page(url) is False:
                 these_results = []
+                self.invalid_scrape_count += 1
                 continue
 
+            # scrape the content
             these_results = scrape_job_urls_from_job_search_page(self.driver)
-            self.scraped_urls += these_results
+
+            unique_results = [
+                url for url in these_results if self.saver.url_is_unique(url)
+            ]
 
             # save these results
-            new_urls = 0
-            for url in these_results:
-                if self.saver.url_is_unique(url):
-                    self.saver.add_url_to_scrape_file(url)
-                    new_urls += 1
+            for url in unique_results:
+                self.saver.add_url_to_scrape_file(url)
 
-            print(
-                f"Scraped {len(these_results)} urls ({new_urls} new) for a total of {len(self.scraped_urls)} this session and {len(self.saver.get_saved_urls())} total in {int(time.time() - start_time)}s"
-                + " " * 40,
-                end="\r",
-            )
+            # track stats
+            self.total_scrape_count += len(unique_results)
+            if len(unique_results) > 0:
+                self.valid_scrape_count += 1
+            else:
+                self.invalid_scrape_count += 1
+
 
 
 class MultithreadScraper:
